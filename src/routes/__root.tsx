@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "AI Cyber Threat Intelligence Platform" },
+      { name: "description", content: "Enterprise Security Operations Center dashboard with AI-powered threat detection, log analysis and incident response." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "AI Cyber Threat Intelligence Platform" },
+      { property: "og:description", content: "Enterprise Security Operations Center dashboard with AI-powered threat detection, log analysis and incident response." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "AI Cyber Threat Intelligence Platform" },
+      { name: "twitter:description", content: "Enterprise Security Operations Center dashboard with AI-powered threat detection, log analysis and incident response." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b5b4325d-092c-4831-94e8-5748088e3366/id-preview-80b547c8--1d4e7a7a-bbe4-42c2-8bd9-8e3216eed0a2.lovable.app-1784559568883.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b5b4325d-092c-4831-94e8-5748088e3366/id-preview-80b547c8--1d4e7a7a-bbe4-42c2-8bd9-8e3216eed0a2.lovable.app-1784559568883.png" },
     ],
     links: [
       {

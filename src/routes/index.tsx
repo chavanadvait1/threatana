@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "AI Cyber Threat Intelligence Platform" },
       {
         property: "og:description",
-        content: "Real-time threat detection and SOC dashboard powered by AI.",
+        content: "Enterprise Security Operations Center dashboard with AI-powered threat detection, log analysis and incident response.",
       },
     ],
   }),
