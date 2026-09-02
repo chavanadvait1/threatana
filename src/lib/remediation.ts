@@ -124,3 +124,60 @@ export function answer(query: string): string {
     ...p.steps.map((s, i) => `${i + 1}. ${s}`),
   ].join("\n");
 }
+
+/** Generic per-severity playbooks used when no keyword pattern matches. */
+export const GENERIC: Record<Severity, Playbook> = {
+  low: {
+    keywords: [],
+    severity: "low",
+    title: "Low severity triage",
+    plain:
+      "Low risk noise or reconnaissance. Nothing is compromised yet, but it should be confirmed and closed properly.",
+    steps: [
+      "Open the raw log line and confirm the alert is real, not a false positive.",
+      "Apply a cheap containment: block the source IP or lock the account.",
+      "Check whether the same source appears in other alerts today.",
+      "Document the finding and close it if there is no repeat within 24 hours.",
+    ],
+  },
+  medium: {
+    keywords: [],
+    severity: "medium",
+    title: "Medium severity response",
+    plain: "Something abnormal is happening that could turn into a real incident.",
+    steps: [
+      "Identify the affected host and user account.",
+      "Verify the activity with the asset owner.",
+      "Restrict the account or network path while you verify.",
+      "Escalate to HIGH if you cannot explain the behaviour.",
+    ],
+  },
+  high: {
+    keywords: [],
+    severity: "high",
+    title: "High severity response",
+    plain: "Strong signs of attacker activity. Treat as an incident until proven otherwise.",
+    steps: [
+      "Isolate the affected host from the network.",
+      "Rotate credentials used on that host.",
+      "Collect logs and memory for forensics before cleanup.",
+      "Hunt for the same indicators across the estate.",
+    ],
+  },
+  critical: {
+    keywords: [],
+    severity: "critical",
+    title: "Critical incident response",
+    plain: "Active compromise. Speed matters more than analysis right now.",
+    steps: [
+      "Disconnect the host from network and storage immediately.",
+      "Preserve evidence (memory + disk) before any remediation.",
+      "Verify offline backups are intact and restorable.",
+      "Notify incident response, management, and start the comms plan.",
+    ],
+  },
+};
+
+export function resolvePlaybook(text: string, severity: Severity): Playbook {
+  return findPlaybook(text) ?? GENERIC[severity];
+}
