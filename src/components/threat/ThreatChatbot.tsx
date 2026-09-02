@@ -72,8 +72,21 @@ export function ThreatChatbot() {
     }, 600);
   };
 
+  const sendRef = useRef(send);
+  sendRef.current = send;
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      sendRef.current(detail);
+      sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+    window.addEventListener("soc-assistant-ask", handler);
+    return () => window.removeEventListener("soc-assistant-ask", handler);
+  }, []);
+
   return (
-    <section className="panel p-6 md:p-8">
+    <section ref={sectionRef} className="panel p-6 md:p-8">
       <div className="flex items-center gap-3 mb-5">
         <Bot className="text-neon-green" size={22} />
         <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
