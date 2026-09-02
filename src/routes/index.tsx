@@ -4,6 +4,7 @@ import { StatCard } from "@/components/threat/StatCard";
 import { SeverityChart } from "@/components/threat/SeverityChart";
 import { LogAnalyzer } from "@/components/threat/LogAnalyzer";
 import { ThreatList } from "@/components/threat/ThreatList";
+import { ThreatChatbot } from "@/components/threat/ThreatChatbot";
 import { THREATS } from "@/lib/threat-data";
 
 export const Route = createFileRoute("/")({
@@ -58,6 +59,9 @@ function Dashboard() {
 
         {/* Analyzer */}
         <LogAnalyzer />
+
+        {/* Assistant */}
+        <ThreatChatbot />
 
         {/* Threat list */}
         <ThreatList />
