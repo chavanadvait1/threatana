@@ -5,7 +5,7 @@ import { SeverityChart } from "@/components/threat/SeverityChart";
 import { LogAnalyzer } from "@/components/threat/LogAnalyzer";
 import { ThreatList } from "@/components/threat/ThreatList";
 import { ThreatChatbot } from "@/components/threat/ThreatChatbot";
-import { THREATS } from "@/lib/threat-data";
+import { useThreatStore, setFilter, type ListFilter } from "@/lib/threat-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,15 +21,23 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "Enterprise Security Operations Center dashboard with AI-powered threat detection, log analysis and incident response.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Dashboard,
 });
 
 function Dashboard() {
-  const total = THREATS.length;
-  const critical = THREATS.filter((t) => t.severity === "critical").length;
-  const resolved = 0;
+  const { threats, filter } = useThreatStore();
+  const total = threats.length;
+  const critical = threats.filter((t) => t.severity === "critical" && !t.resolved).length;
+  const resolved = threats.filter((t) => t.resolved).length;
+
+  const go = (f: ListFilter) => {
+    setFilter(f);
+    document.getElementById("threat-list")?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen">
@@ -51,9 +59,9 @@ function Dashboard() {
 
         {/* Stats */}
         <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total Threats Detected" value={total} accent="blue" />
-          <StatCard label="Critical Alerts" value={critical} accent="red" />
-          <StatCard label="Threats Resolved" value={resolved} accent="green" />
+          <StatCard label="Total Threats Detected" value={total} accent="blue" onClick={() => go("all")} active={filter === "all"} />
+          <StatCard label="Critical Alerts (open)" value={critical} accent="red" onClick={() => go("critical")} active={filter === "critical"} />
+          <StatCard label="Threats Resolved" value={resolved} accent="green" onClick={() => go("resolved")} active={filter === "resolved"} />
           <SeverityChart />
         </section>
 
