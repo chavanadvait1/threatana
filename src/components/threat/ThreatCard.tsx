@@ -12,15 +12,17 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
+import { Sparkles, AlertTriangle } from "lucide-react";
 import { severityBorder, severityColor, type Threat } from "@/lib/threat-data";
 import { resolvePlaybook } from "@/lib/remediation";
+import { toggleResolved } from "@/lib/threat-store";
 
 const iocIcon = { ip: Globe, file: Lock, hash: Hash, user: User } as const;
 
 export function ThreatCard({ threat }: { threat: Threat }) {
-  const [resolved, setResolved] = useState(!!threat.resolved);
+  const resolved = !!threat.resolved;
   const [open, setOpen] = useState(false);
-  const label = `${threat.severity.toUpperCase()} ALERT`;
+  const label = threat.novel ? "NEW THREAT" : `${threat.severity.toUpperCase()} ALERT`;
   const isLow = threat.severity === "low";
 
   const playbook = resolvePlaybook(
@@ -38,22 +40,36 @@ export function ThreatCard({ threat }: { threat: Threat }) {
 
   return (
     <article
-      className={`panel ${severityBorder[threat.severity]} p-5 flex flex-col gap-4 transition ${
+      className={`panel ${threat.novel ? "neon-border-red" : severityBorder[threat.severity]} p-5 flex flex-col gap-4 transition ${
         resolved ? "opacity-60" : ""
       }`}
     >
       <header className="flex items-start justify-between gap-3">
-        <h3 className={`text-lg font-bold tracking-wide ${severityColor[threat.severity]}`}>
+        <h3 className={`text-lg font-bold tracking-wide flex items-center gap-2 ${threat.novel ? "text-neon-red" : severityColor[threat.severity]}`}>
+          {threat.novel && <AlertTriangle size={18} className="animate-pulse" />}
           {label}
         </h3>
-        <span className="text-xs font-mono text-muted-foreground px-2 py-0.5 rounded border border-panel-border">
-          [{threat.id}]
-        </span>
+        <div className="flex items-center gap-2">
+          {threat.isNew && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-neon-red/20 border border-neon-red/60 text-neon-red animate-pulse">
+              <Sparkles size={10} /> NEW
+            </span>
+          )}
+          {threat.novel && (
+            <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-neon-amber/20 border border-neon-amber/60 text-neon-amber">
+              HIGH PRIORITY
+            </span>
+          )}
+          <span className="text-xs font-mono text-muted-foreground px-2 py-0.5 rounded border border-panel-border">
+            [{threat.id}]
+          </span>
+        </div>
       </header>
 
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Clock size={12} />
         <span className="font-mono">{threat.timestamp}</span>
+        {resolved && <span className="ml-auto text-neon-green font-semibold">RESOLVED</span>}
       </div>
 
       <p className="text-sm leading-relaxed text-foreground/90">{threat.description}</p>
@@ -136,7 +152,7 @@ export function ThreatCard({ threat }: { threat: Threat }) {
           Create GitHub Ticket
         </button>
         <button
-          onClick={() => setResolved((r) => !r)}
+          onClick={() => toggleResolved(threat.id)}
           className="inline-flex items-center justify-center gap-2 py-2.5 rounded-md bg-neon-green/10 border border-neon-green/40 text-neon-green text-sm font-semibold hover:bg-neon-green/20 transition"
         >
           <CheckCircle2 size={14} />

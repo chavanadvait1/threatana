@@ -1,21 +1,27 @@
 import { useState } from "react";
 import { Terminal, Loader2 } from "lucide-react";
+import { analyzeLogs, setFilter, type AnalysisResult } from "@/lib/threat-store";
+import { severityColor } from "@/lib/threat-data";
+
+const SAMPLE =
+  "Sep 26 10:12:01 web01 sshd[2231]: Failed password for invalid user admin from 45.83.66.12 port 51122 ssh2\nSep 26 10:12:04 web01 sshd[2231]: Failed password for invalid user admin from 45.83.66.12 port 51123 ssh2";
 
 export function LogAnalyzer() {
   const [logs, setLogs] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
 
   const analyze = () => {
     if (!logs.trim()) return;
     setBusy(true);
     setResult(null);
     setTimeout(() => {
+      const r = analyzeLogs(logs);
+      setResult(r);
       setBusy(false);
-      setResult(
-        "Threat categorized as MEDIUM. 2 IOCs extracted. Recommendation: isolate host and rotate credentials."
-      );
-    }, 1200);
+      setLogs("");
+      setFilter("all");
+    }, 900);
   };
 
   return (
@@ -35,7 +41,7 @@ export function LogAnalyzer() {
         className="w-full h-40 bg-background/60 border border-panel-border rounded-md p-4 font-mono text-sm text-foreground/90 placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-neon-blue/60 resize-y"
       />
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           onClick={analyze}
           disabled={busy}
@@ -44,8 +50,20 @@ export function LogAnalyzer() {
           {busy && <Loader2 size={16} className="animate-spin" />}
           Analyze Logs Securely
         </button>
+        <button
+          onClick={() => setLogs(SAMPLE)}
+          className="text-xs text-muted-foreground hover:text-foreground underline"
+        >
+          Use sample log
+        </button>
         {result && (
-          <div className="text-sm text-neon-green flex-1">{result}</div>
+          <div className="text-sm flex-1">
+            Ticket <span className="font-mono">#{result.threat.id}</span> created ·{" "}
+            <span className={`font-semibold uppercase ${severityColor[result.threat.severity]}`}>
+              {result.threat.severity}
+            </span>{" "}
+            · {result.category} · {result.threat.indicators.length} IOC(s) extracted
+          </div>
         )}
       </div>
     </section>

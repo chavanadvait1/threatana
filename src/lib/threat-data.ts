@@ -7,6 +7,11 @@ export interface Threat {
   description: string;
   indicators: { type: "ip" | "file" | "hash" | "user"; value: string }[];
   resolved?: boolean;
+  /** Freshly analyzed ticket (latest threat) */
+  isNew?: boolean;
+  /** No known signature matched — brand new threat type */
+  novel?: boolean;
+  category?: string;
 }
 
 export const THREATS: Threat[] = [
