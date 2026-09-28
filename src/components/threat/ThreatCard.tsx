@@ -16,12 +16,42 @@ import { Sparkles, AlertTriangle } from "lucide-react";
 import { severityBorder, severityColor, type Threat } from "@/lib/threat-data";
 import { resolvePlaybook } from "@/lib/remediation";
 import { toggleResolved } from "@/lib/threat-store";
+import { createGithubTicket } from "@/lib/github.functions";
 
 const iocIcon = { ip: Globe, file: Lock, hash: Hash, user: User } as const;
 
 export function ThreatCard({ threat }: { threat: Threat }) {
   const resolved = !!threat.resolved;
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [ticketUrl, setTicketUrl] = useState<string | null>(null);
+
+  const createTicket = async () => {
+    if (creating) return;
+    if (ticketUrl) {
+      window.open(ticketUrl, "_blank", "noopener");
+      return;
+    }
+    setCreating(true);
+    try {
+      const issue = await createGithubTicket({
+        data: {
+          threatId: threat.id,
+          severity: threat.severity,
+          description: threat.description,
+          indicators: threat.indicators.map((i) => i.value),
+          timestamp: threat.timestamp,
+        },
+      });
+      setTicketUrl(issue.url);
+      window.open(issue.url, "_blank", "noopener");
+    } catch (e) {
+      console.error(e);
+      alert("Could not create the GitHub ticket. Check the GitHub connection and try again.");
+    } finally {
+      setCreating(false);
+    }
+  };
   const label = threat.novel ? "NEW THREAT" : `${threat.severity.toUpperCase()} ALERT`;
   const isLow = threat.severity === "low";
 
@@ -147,9 +177,13 @@ export function ThreatCard({ threat }: { threat: Threat }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 mt-auto">
-        <button className="inline-flex items-center justify-center gap-2 py-2.5 rounded-md bg-neon-blue/10 border border-neon-blue/40 text-neon-blue text-sm font-semibold hover:bg-neon-blue/20 transition">
+        <button
+          onClick={createTicket}
+          disabled={creating}
+          className="inline-flex items-center justify-center gap-2 py-2.5 rounded-md bg-neon-blue/10 border border-neon-blue/40 text-neon-blue text-sm font-semibold hover:bg-neon-blue/20 transition disabled:opacity-50"
+        >
           <Github size={14} />
-          Create GitHub Ticket
+          {creating ? "Creating..." : ticketUrl ? "Open GitHub Ticket" : "Create GitHub Ticket"}
         </button>
         <button
           onClick={() => toggleResolved(threat.id)}
