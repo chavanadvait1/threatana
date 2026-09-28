@@ -27,7 +27,7 @@ export function LogAnalyzer() {
         .from("log_analyses")
         .insert({
           raw_log: raw.slice(0, 20000),
-          title: r.threat.title,
+          title: r.threat.description.slice(0, 200),
           category: r.category,
           severity: r.threat.severity,
           novel: !!r.threat.novel,
