@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Terminal, Loader2 } from "lucide-react";
 import { analyzeLogs, setFilter, type AnalysisResult } from "@/lib/threat-store";
 import { severityColor } from "@/lib/threat-data";
+import { supabase } from "@/integrations/supabase/client";
 
 const SAMPLE =
   "Sep 26 10:12:01 web01 sshd[2231]: Failed password for invalid user admin from 45.83.66.12 port 51122 ssh2\nSep 26 10:12:04 web01 sshd[2231]: Failed password for invalid user admin from 45.83.66.12 port 51123 ssh2";
@@ -15,12 +16,27 @@ export function LogAnalyzer() {
     if (!logs.trim()) return;
     setBusy(true);
     setResult(null);
+    const raw = logs;
     setTimeout(() => {
-      const r = analyzeLogs(logs);
+      const r = analyzeLogs(raw);
       setResult(r);
       setBusy(false);
       setLogs("");
       setFilter("all");
+      supabase
+        .from("log_analyses")
+        .insert({
+          raw_log: raw.slice(0, 20000),
+          title: r.threat.title,
+          category: r.category,
+          severity: r.threat.severity,
+          novel: !!r.threat.novel,
+          ioc_count: r.threat.indicators.length,
+        })
+        .then(({ error }) => {
+          if (error) console.error("Failed to save analysis", error);
+          else window.dispatchEvent(new Event("log-analyses-changed"));
+        });
     }, 900);
   };
 
