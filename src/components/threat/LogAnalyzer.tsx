@@ -1,43 +1,43 @@
 import { useState } from "react";
-import { Terminal, Loader2 } from "lucide-react";
-import { analyzeLogs, setFilter, type AnalysisResult } from "@/lib/threat-store";
+import { Terminal, Loader2, Shuffle } from "lucide-react";
+import { classifyRules, createTicket, setFilter, type AnalysisResult } from "@/lib/threat-store";
 import { severityColor } from "@/lib/threat-data";
-import { supabase } from "@/integrations/supabase/client";
-
-const SAMPLE =
-  "Sep 26 10:12:01 web01 sshd[2231]: Failed password for invalid user admin from 45.83.66.12 port 51122 ssh2\nSep 26 10:12:04 web01 sshd[2231]: Failed password for invalid user admin from 45.83.66.12 port 51123 ssh2";
+import { analyzeLogsAI } from "@/lib/analyze.functions";
+import { randomSampleLog } from "@/lib/sample-logs";
 
 export function LogAnalyzer() {
   const [logs, setLogs] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [engine, setEngine] = useState<"ai" | "rules" | null>(null);
 
-  const analyze = () => {
-    if (!logs.trim()) return;
+  const analyze = async () => {
+    const raw = logs.trim();
+    if (!raw) return;
     setBusy(true);
     setResult(null);
-    const raw = logs;
-    setTimeout(() => {
-      const r = analyzeLogs(raw);
-      setResult(r);
-      setBusy(false);
-      setLogs("");
-      setFilter("all");
-      supabase
-        .from("log_analyses")
-        .insert({
-          raw_log: raw.slice(0, 20000),
-          title: r.threat.description.slice(0, 200),
-          category: r.category,
-          severity: r.threat.severity,
-          novel: !!r.threat.novel,
-          ioc_count: r.threat.indicators.length,
-        })
-        .then(({ error }) => {
-          if (error) console.error("Failed to save analysis", error);
-          else window.dispatchEvent(new Event("log-analyses-changed"));
-        });
-    }, 900);
+    let ai = null;
+    try {
+      ai = await analyzeLogsAI({ data: { logs: raw.slice(0, 20000) } });
+    } catch (e) {
+      console.error(e);
+    }
+    const c = ai
+      ? {
+          severity: ai.severity,
+          category: ai.category,
+          description: `[${ai.category}] ${ai.description}`,
+          novel: ai.novel,
+          isNew: true,
+          indicators: ai.indicators.length ? ai.indicators.slice(0, 8) : [{ type: "file" as const, value: "no IOC extracted" }],
+        }
+      : classifyRules(raw);
+    const r = await createTicket(raw, c);
+    setEngine(ai ? "ai" : "rules");
+    setResult(r);
+    setBusy(false);
+    setLogs("");
+    setFilter("all");
   };
 
   return (
@@ -46,7 +46,7 @@ export function LogAnalyzer() {
         <Terminal className="text-neon-cyan" size={22} />
         <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
           Analyze Security Logs{" "}
-          <span className="text-muted-foreground font-normal text-base">(Llama 3 Powered)</span>
+          <span className="text-muted-foreground font-normal text-base">(AI Powered)</span>
         </h2>
       </div>
 
@@ -64,13 +64,13 @@ export function LogAnalyzer() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-neon-blue/20 border border-neon-blue/50 text-neon-blue font-medium hover:bg-neon-blue/30 transition disabled:opacity-60"
         >
           {busy && <Loader2 size={16} className="animate-spin" />}
-          Analyze Logs Securely
+          {busy ? "Analyzing..." : "Analyze Logs Securely"}
         </button>
         <button
-          onClick={() => setLogs(SAMPLE)}
-          className="text-xs text-muted-foreground hover:text-foreground underline"
+          onClick={() => setLogs(randomSampleLog())}
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground underline"
         >
-          Use sample log
+          <Shuffle size={12} /> Use random sample log
         </button>
         {result && (
           <div className="text-sm flex-1">
@@ -79,6 +79,7 @@ export function LogAnalyzer() {
               {result.threat.severity}
             </span>{" "}
             · {result.category} · {result.threat.indicators.length} IOC(s) extracted
+            <span className="text-muted-foreground"> · {engine === "ai" ? "AI analysis" : "rule-based fallback"}</span>
           </div>
         )}
       </div>
