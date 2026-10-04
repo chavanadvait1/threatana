@@ -18,7 +18,9 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          description: string | null
           id: string
+          indicators: Json
           ioc_count: number
           novel: boolean
           raw_log: string
@@ -28,7 +30,9 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string
+          description?: string | null
           id?: string
+          indicators?: Json
           ioc_count?: number
           novel?: boolean
           raw_log: string
@@ -38,12 +42,32 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          description?: string | null
           id?: string
+          indicators?: Json
           ioc_count?: number
           novel?: boolean
           raw_log?: string
           severity?: string
           title?: string
+        }
+        Relationships: []
+      }
+      threat_resolutions: {
+        Row: {
+          resolved: boolean
+          threat_key: string
+          updated_at: string
+        }
+        Insert: {
+          resolved?: boolean
+          threat_key: string
+          updated_at?: string
+        }
+        Update: {
+          resolved?: boolean
+          threat_key?: string
+          updated_at?: string
         }
         Relationships: []
       }
