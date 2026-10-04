@@ -1,11 +1,12 @@
 import { useSyncExternalStore } from "react";
 import { THREATS, type Severity, type Threat } from "./threat-data";
+import { supabase } from "@/integrations/supabase/client";
 
 export type ListFilter = Severity | "all" | "new" | "resolved";
 
 type State = { threats: Threat[]; filter: ListFilter };
 
-let state: State = { threats: THREATS.map((t) => ({ ...t })), filter: "all" };
+let state: State = { threats: THREATS.map((t) => ({ ...t, key: `seed-${t.id}` })), filter: "all" };
 const listeners = new Set<() => void>();
 const set = (s: Partial<State>) => {
   state = { ...state, ...s };
@@ -22,10 +23,49 @@ export function useThreatStore() {
 
 export const setFilter = (filter: ListFilter) => set({ filter });
 
-export const toggleResolved = (id: number) =>
-  set({
-    threats: state.threats.map((t) => (t.id === id ? { ...t, resolved: !t.resolved } : t)),
-  });
+export const toggleResolved = (id: number) => {
+  const t = state.threats.find((x) => x.id === id);
+  if (!t) return;
+  const resolved = !t.resolved;
+  set({ threats: state.threats.map((x) => (x.id === id ? { ...x, resolved } : x)) });
+  if (t.key)
+    supabase
+      .from("threat_resolutions")
+      .upsert({ threat_key: t.key, resolved, updated_at: new Date().toISOString() })
+      .then(({ error }) => error && console.error("Failed to save resolution", error));
+};
+
+let loaded = false;
+/** Load saved tickets and resolved marks from the database (once, in the browser). */
+export async function loadPersisted() {
+  if (loaded) return;
+  loaded = true;
+  const [{ data: rows }, { data: res }] = await Promise.all([
+    supabase.from("log_analyses").select("*").order("created_at", { ascending: true }).limit(500),
+    supabase.from("threat_resolutions").select("*"),
+  ]);
+  const resolvedMap = new Map((res ?? []).map((r) => [r.threat_key, r.resolved]));
+  const seeds = THREATS.map((t) => ({ ...t, key: `seed-${t.id}` }));
+  let next = Math.max(...seeds.map((t) => t.id));
+  const saved: Threat[] = (rows ?? []).map((r) => ({
+    id: ++next,
+    key: `db-${r.id}`,
+    severity: r.severity as Severity,
+    timestamp: new Date(r.created_at).toLocaleString(),
+    description: r.description ?? r.title,
+    indicators: Array.isArray(r.indicators) && r.indicators.length
+      ? (r.indicators as Threat["indicators"])
+      : [{ type: "file", value: "no IOC extracted" }],
+    novel: r.novel,
+    category: r.category,
+    isNew: Date.now() - new Date(r.created_at).getTime() < 15 * 60 * 1000,
+  }));
+  const all = [...saved.reverse(), ...seeds].map((t) => ({
+    ...t,
+    resolved: resolvedMap.get(t.key!) ?? false,
+  }));
+  set({ threats: all });
+}
 
 export function addThreat(t: Omit<Threat, "id">): Threat {
   const id = Math.max(0, ...state.threats.map((x) => x.id)) + 1;
@@ -66,8 +106,10 @@ export interface AnalysisResult {
   category: string;
 }
 
-/** Analyze logs, divide them into categories, and create a new ticket. */
-export function analyzeLogs(logs: string): AnalysisResult {
+export type Classified = Omit<Threat, "id" | "timestamp">;
+
+/** Rule-based fallback classifier. */
+export function classifyRules(logs: string): Classified {
   const matches = RULES.filter((r) => r.re.test(logs));
   const order: Severity[] = ["critical", "high", "medium", "low"];
   matches.sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity));
@@ -92,14 +134,31 @@ export function analyzeLogs(logs: string): AnalysisResult {
     description = top.text + (matches.length > 1 ? ` Also observed: ${matches.slice(1).map((m) => m.category).join(", ")}.` : "");
   }
 
-  const threat = addThreat({
+  return {
     severity,
-    timestamp: new Date().toLocaleString(),
     description: `[${category}] ${description}`,
     indicators: extractIocs(logs).length ? extractIocs(logs) : [{ type: "file", value: "no IOC extracted" }],
     isNew: true,
     novel,
     category,
+  };
+}
+
+/** Add a classified result as a new ticket, persisting it so it survives refresh. */
+export async function createTicket(raw: string, c: Classified): Promise<AnalysisResult> {
+  const id = crypto.randomUUID();
+  const threat = addThreat({ ...c, key: `db-${id}`, timestamp: new Date().toLocaleString() });
+  const { error } = await supabase.from("log_analyses").insert({
+    id,
+    raw_log: raw.slice(0, 20000),
+    title: c.description.slice(0, 200),
+    description: c.description.slice(0, 2000),
+    category: (c.category ?? "Unknown").slice(0, 100),
+    severity: c.severity,
+    novel: !!c.novel,
+    ioc_count: c.indicators.length,
+    indicators: c.indicators,
   });
-  return { threat, category };
+  if (error) console.error("Failed to save analysis", error);
+  return { threat, category: c.category ?? "Unknown" };
 }

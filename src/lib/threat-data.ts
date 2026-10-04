@@ -2,6 +2,8 @@ export type Severity = "critical" | "high" | "medium" | "low";
 
 export interface Threat {
   id: number;
+  /** Persistence key (seed-N or db-uuid) */
+  key?: string;
   severity: Severity;
   timestamp: string;
   description: string;

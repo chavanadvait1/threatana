@@ -4,9 +4,9 @@ import { StatCard } from "@/components/threat/StatCard";
 import { SeverityChart } from "@/components/threat/SeverityChart";
 import { LogAnalyzer } from "@/components/threat/LogAnalyzer";
 import { ThreatList } from "@/components/threat/ThreatList";
-import { AnalysisHistory } from "@/components/threat/AnalysisHistory";
+import { useEffect } from "react";
 import { ThreatChatbot } from "@/components/threat/ThreatChatbot";
-import { useThreatStore, setFilter, type ListFilter } from "@/lib/threat-store";
+import { useThreatStore, setFilter, loadPersisted, type ListFilter } from "@/lib/threat-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -31,6 +31,9 @@ export const Route = createFileRoute("/")({
 
 function Dashboard() {
   const { threats, filter } = useThreatStore();
+  useEffect(() => {
+    loadPersisted();
+  }, []);
   const total = threats.length;
   const critical = threats.filter((t) => t.severity === "critical" && !t.resolved).length;
   const resolved = threats.filter((t) => t.resolved).length;
@@ -75,11 +78,8 @@ function Dashboard() {
         {/* Threat list */}
         <ThreatList />
 
-        {/* Saved history */}
-        <AnalysisHistory />
-
         <footer className="pt-4 pb-2 text-center text-xs text-muted-foreground font-mono">
-          &gt; SOC v2.6 · Llama 3 · Realtime feed connected
+          &gt; SOC v2.6 · AI analysis · Realtime feed connected
         </footer>
       </div>
     </div>
