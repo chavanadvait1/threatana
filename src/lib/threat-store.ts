@@ -44,7 +44,9 @@ export async function loadPersisted() {
     supabase.from("log_analyses").select("*").order("created_at", { ascending: true }).limit(500),
     supabase.from("threat_resolutions").select("*"),
   ]);
-  const resolvedMap = new Map((res ?? []).map((r) => [r.threat_key, r.resolved]));
+  const resolvedMap = new Map<string, boolean>(
+    (res ?? []).map((r: { threat_key: string; resolved: boolean }) => [r.threat_key, !!r.resolved])
+  );
   const seeds = THREATS.map((t) => ({ ...t, key: `seed-${t.id}` }));
   let next = Math.max(...seeds.map((t) => t.id));
   const saved: Threat[] = (rows ?? []).map((r) => ({
