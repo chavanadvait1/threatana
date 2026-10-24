@@ -8,6 +8,7 @@ export const createGithubTicket = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z
       .object({
+        threatKey: z.string().min(1),
         threatId: z.number(),
         severity: z.string(),
         description: z.string(),
@@ -21,6 +22,18 @@ export const createGithubTicket = createServerFn({ method: "POST" })
     const githubKey = process.env["GITHUB_API_KEY"];
     if (!lovableKey || !githubKey) {
       throw new Error("GitHub connection is not configured");
+    }
+
+    // Idempotency: if this threat already has a linked GitHub issue, return it
+    // instead of creating a duplicate.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existing } = await supabaseAdmin
+      .from("threat_tickets")
+      .select("issue_url, issue_number")
+      .eq("threat_key", data.threatKey)
+      .maybeSingle();
+    if (existing) {
+      return { url: existing.issue_url, number: existing.issue_number, existing: true };
     }
 
     const title = `[${data.severity.toUpperCase()}] Threat #${data.threatId}: ${data.description.slice(0, 80)}`;
@@ -60,5 +73,16 @@ export const createGithubTicket = createServerFn({ method: "POST" })
     }
 
     const issue = (await response.json()) as { html_url: string; number: number };
-    return { url: issue.html_url, number: issue.number };
+
+    // Persist the link so refreshes and later clicks open the same issue.
+    const { error: linkError } = await supabaseAdmin
+      .from("threat_tickets")
+      .upsert({
+        threat_key: data.threatKey,
+        issue_url: issue.html_url,
+        issue_number: issue.number,
+      });
+    if (linkError) console.error("Failed to save ticket link", linkError);
+
+    return { url: issue.html_url, number: issue.number, existing: false };
   });
