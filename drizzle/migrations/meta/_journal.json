@@ -15,6 +15,13 @@
       "when": 1792830202087,
       "tag": "0001_threat_ticket_links",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792830439421,
+      "tag": "0002_restrict_public_writes",
+      "breakpoints": true
     }
   ]
 }
