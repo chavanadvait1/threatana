@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { THREATS, type Severity, type Threat } from "./threat-data";
+import { setThreatResolved } from "./resolution.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export type ListFilter = Severity | "all" | "new" | "resolved";
@@ -29,10 +30,9 @@ export const toggleResolved = (id: number) => {
   const resolved = !t.resolved;
   set({ threats: state.threats.map((x) => (x.id === id ? { ...x, resolved } : x)) });
   if (t.key)
-    supabase
-      .from("threat_resolutions")
-      .upsert({ threat_key: t.key, resolved, updated_at: new Date().toISOString() })
-      .then(({ error }) => error && console.error("Failed to save resolution", error));
+    setThreatResolved({ data: { threatKey: t.key, resolved } }).catch((e) =>
+      console.error("Failed to save resolution", e)
+    );
 };
 
 let loaded = false;
@@ -44,7 +44,9 @@ export async function loadPersisted() {
     supabase.from("log_analyses").select("*").order("created_at", { ascending: true }).limit(500),
     supabase.from("threat_resolutions").select("*"),
   ]);
-  const resolvedMap = new Map((res ?? []).map((r) => [r.threat_key, r.resolved]));
+  const resolvedMap = new Map<string, boolean>(
+    (res ?? []).map((r: { threat_key: string; resolved: boolean }) => [r.threat_key, !!r.resolved])
+  );
   const seeds = THREATS.map((t) => ({ ...t, key: `seed-${t.id}` }));
   let next = Math.max(...seeds.map((t) => t.id));
   const saved: Threat[] = (rows ?? []).map((r) => ({
