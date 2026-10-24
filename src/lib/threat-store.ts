@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { THREATS, type Severity, type Threat } from "./threat-data";
 import { setThreatResolved } from "./resolution.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export type ListFilter = Severity | "all" | "new" | "resolved";
 
