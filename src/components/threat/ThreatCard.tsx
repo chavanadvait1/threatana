@@ -27,6 +27,24 @@ export function ThreatCard({ threat }: { threat: Threat }) {
   const [creating, setCreating] = useState(false);
   const [ticketUrl, setTicketUrl] = useState<string | null>(null);
 
+  // Load any previously created GitHub ticket for this threat so the button
+  // shows "Open GitHub Ticket" instead of creating a duplicate issue.
+  useEffect(() => {
+    if (!threat.key) return;
+    let cancelled = false;
+    supabase
+      .from("threat_tickets")
+      .select("issue_url")
+      .eq("threat_key", threat.key)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data?.issue_url) setTicketUrl(data.issue_url);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [threat.key]);
+
   const createTicket = async () => {
     if (creating) return;
     if (ticketUrl) {
@@ -37,6 +55,7 @@ export function ThreatCard({ threat }: { threat: Threat }) {
     try {
       const issue = await createGithubTicket({
         data: {
+          threatKey: threat.key ?? `adhoc-${threat.id}`,
           threatId: threat.id,
           severity: threat.severity,
           description: threat.description,
