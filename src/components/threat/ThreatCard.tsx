@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Clock,
   Globe,
@@ -11,12 +12,12 @@ import {
   ChevronDown,
   MessageSquare,
 } from "lucide-react";
-import { useState } from "react";
 import { Sparkles, AlertTriangle } from "lucide-react";
 import { severityBorder, severityColor, type Threat } from "@/lib/threat-data";
 import { resolvePlaybook } from "@/lib/remediation";
 import { toggleResolved } from "@/lib/threat-store";
 import { createGithubTicket } from "@/lib/github.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 const iocIcon = { ip: Globe, file: Lock, hash: Hash, user: User } as const;
 
@@ -25,6 +26,24 @@ export function ThreatCard({ threat }: { threat: Threat }) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [ticketUrl, setTicketUrl] = useState<string | null>(null);
+
+  // Load any previously created GitHub ticket for this threat so the button
+  // shows "Open GitHub Ticket" instead of creating a duplicate issue.
+  useEffect(() => {
+    if (!threat.key) return;
+    let cancelled = false;
+    supabase
+      .from("threat_tickets")
+      .select("issue_url")
+      .eq("threat_key", threat.key)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data?.issue_url) setTicketUrl(data.issue_url);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [threat.key]);
 
   const createTicket = async () => {
     if (creating) return;
@@ -36,6 +55,7 @@ export function ThreatCard({ threat }: { threat: Threat }) {
     try {
       const issue = await createGithubTicket({
         data: {
+          threatKey: threat.key ?? `adhoc-${threat.id}`,
           threatId: threat.id,
           severity: threat.severity,
           description: threat.description,

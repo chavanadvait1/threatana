@@ -71,6 +71,27 @@ export type Database = {
         }
         Relationships: []
       }
+      threat_tickets: {
+        Row: {
+          created_at: string
+          issue_number: number
+          issue_url: string
+          threat_key: string
+        }
+        Insert: {
+          created_at?: string
+          issue_number: number
+          issue_url: string
+          threat_key: string
+        }
+        Update: {
+          created_at?: string
+          issue_number?: number
+          issue_url?: string
+          threat_key?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
