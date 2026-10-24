@@ -29,10 +29,9 @@ export const toggleResolved = (id: number) => {
   const resolved = !t.resolved;
   set({ threats: state.threats.map((x) => (x.id === id ? { ...x, resolved } : x)) });
   if (t.key)
-    supabase
-      .from("threat_resolutions")
-      .upsert({ threat_key: t.key, resolved, updated_at: new Date().toISOString() })
-      .then(({ error }) => error && console.error("Failed to save resolution", error));
+    setThreatResolved({ data: { threatKey: t.key, resolved } }).catch((e) =>
+      console.error("Failed to save resolution", e)
+    );
 };
 
 let loaded = false;
