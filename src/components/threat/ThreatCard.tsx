@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Clock,
   Globe,
@@ -11,12 +12,12 @@ import {
   ChevronDown,
   MessageSquare,
 } from "lucide-react";
-import { useState } from "react";
 import { Sparkles, AlertTriangle } from "lucide-react";
 import { severityBorder, severityColor, type Threat } from "@/lib/threat-data";
 import { resolvePlaybook } from "@/lib/remediation";
 import { toggleResolved } from "@/lib/threat-store";
 import { createGithubTicket } from "@/lib/github.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 const iocIcon = { ip: Globe, file: Lock, hash: Hash, user: User } as const;
 
